@@ -37,3 +37,66 @@ class Agenda:
                 derecha = medio
 
         return izquierda
+
+    def contiene(self, nombre: str) -> bool:
+        """
+        Indica si un nombre está en la agenda
+        Complejidad: O(log n)
+        """
+
+        posicion = self.__buscar(nombre)
+
+        return (
+            posicion < len(self.__contactos)
+            and self.__contactos[posicion][0] == nombre
+        )
+
+    def telefono_de(self, nombre: str) -> str:
+        """
+        Devuelve el teléfono asociado a un nombre
+        Lanza KeyError si el nombre no existe
+
+        Complejidad: O(log n)
+        """
+
+        posicion = self.__buscar(nombre)
+
+        if (
+            posicion >= len(self.__contactos)
+            or self.__contactos[posicion][0] != nombre
+        ):
+            raise KeyError(nombre)
+
+        return self.__contactos[posicion][1]
+
+    def nombres(self) -> list[str]:
+        """Devuelve todos los nombres en orden alfabético.
+
+        La lista devuelta es independiente de la agenda.
+
+        Complejidad: O(n)
+        """
+        return [contacto[0] for contacto in self._contactos]
+
+    def agregar(self, nombre: str, telefono: str) -> None:
+        """Agrega o actualiza un contacto.
+
+        Si el nombre ya existe, actualiza su teléfono.
+        Si el nombre está vacío, lanza ValueError.
+        El teléfono se almacena como texto.
+
+        Complejidad: O(n)
+        """
+        if nombre == "":
+            raise ValueError("El nombre no puede estar vacío")
+
+        telefono = str(telefono)
+        posicion = self._buscar(nombre)
+
+        if (
+            posicion < len(self._contactos)
+            and self._contactos[posicion][0] == nombre
+        ):
+            self._contactos[posicion] = (nombre, telefono)
+        else:
+            self._contactos.insert(posicion, (nombre, telefono))
