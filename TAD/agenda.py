@@ -6,16 +6,16 @@ class Agenda:
         Crea una agenda vacía
         Complejidad: O(1)
         """
-        self.__contactos: list[tuple[str, str]] = []
+        self._contactos: list[tuple[str, str]] = []
 
     def __len__(self) -> int:
         """
         Devuelve la cantidad de contactos de la agenda
         Complejidad: O(1)
         """
-        return len(self.__contactos)
+        return len(self._contactos)
 
-    def __buscar(self, nombre: str) -> int:
+    def _buscar(self, nombre: str) -> int:
         """
         Busca un nombre mediante búsqueda binaria
         Devuelve el índice donde se encuentra el nombre.
@@ -25,11 +25,11 @@ class Agenda:
         """
 
         izquierda = 0
-        derecha = len(self.__contactos)
+        derecha = len(self._contactos)
 
         while izquierda < derecha:
             medio = (izquierda + derecha) // 2
-            nombre_medio = self.__contactos[medio][0]
+            nombre_medio = self._contactos[medio][0]
 
             if nombre_medio < nombre:
                 izquierda = medio + 1
@@ -44,11 +44,11 @@ class Agenda:
         Complejidad: O(log n)
         """
 
-        posicion = self.__buscar(nombre)
+        posicion = self._buscar(nombre)
 
         return (
-            posicion < len(self.__contactos)
-            and self.__contactos[posicion][0] == nombre
+            posicion < len(self._contactos)
+            and self._contactos[posicion][0] == nombre
         )
 
     def telefono_de(self, nombre: str) -> str:
@@ -59,15 +59,15 @@ class Agenda:
         Complejidad: O(log n)
         """
 
-        posicion = self.__buscar(nombre)
+        posicion = self._buscar(nombre)
 
         if (
-            posicion >= len(self.__contactos)
-            or self.__contactos[posicion][0] != nombre
+            posicion >= len(self._contactos)
+            or self._contactos[posicion][0] != nombre
         ):
             raise KeyError(nombre)
 
-        return self.__contactos[posicion][1]
+        return self._contactos[posicion][1]
 
     def nombres(self) -> list[str]:
         """Devuelve todos los nombres en orden alfabético.
