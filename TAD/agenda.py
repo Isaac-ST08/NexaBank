@@ -100,3 +100,20 @@ class Agenda:
             self._contactos[posicion] = (nombre, telefono)
         else:
             self._contactos.insert(posicion, (nombre, telefono))
+
+    def eliminar(self, nombre: str) -> None:
+        """Elimina un contacto de la agenda.
+
+        Lanza KeyError si el nombre no existe.
+
+        Complejidad: O(n)
+        """
+        posicion = self._buscar(nombre)
+
+        if (
+            posicion >= len(self._contactos)
+            or self._contactos[posicion][0] != nombre
+        ):
+            raise KeyError(nombre)
+
+        self._contactos.pop(posicion)
