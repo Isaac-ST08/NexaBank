@@ -1,15 +1,32 @@
 import { api } from "./client";
-import type {
-  SortRequest,
-  SortResult,
-  Transaction
-} from "../types";
+import type { Transaction } from "../types";
 
-// Ejecuta MergeSort o QuickSort en el backend.
+export interface SortRequest {
+  algorithm: "MERGE_SORT" | "QUICK_SORT";
+  field: "amount" | "createdAt";
+  order: "ASC" | "DESC";
+}
+
+export interface SortResult {
+  algorithm: string;
+  field: string;
+  order: string;
+  inputSize: number;
+  executionTimeNanos: number;
+  data: Transaction[];
+}
+
+export interface SearchResult {
+  algorithm: string;
+  target: string;
+  found: boolean;
+  position: number;
+  executionTimeNanos: number;
+}
+
 export async function runSort(
   request: SortRequest
-): Promise<SortResult> {
-
+) {
   const response =
     await api.post<SortResult>(
       "/algorithms/sort",
@@ -19,18 +36,17 @@ export async function runSort(
   return response.data;
 }
 
-// Ejecuta BinarySearch en el backend.
 export async function binarySearch(
-  target: string,
-  field: string
+  value: string,
+  field: "id" | "amount"
 ) {
-
   const response =
-    await api.post<Transaction[]>(
+    await api.post<SearchResult>(
       "/algorithms/search",
       {
-        target: target,
-        field: field
+        algorithm: "BINARY_SEARCH",
+        field,
+        value
       }
     );
 

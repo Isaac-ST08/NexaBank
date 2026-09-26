@@ -1,39 +1,84 @@
 package com.nexabank.api.security;
 
+import com.nexabank.api.model.User;
+import com.nexabank.api.repository.UserRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 /**
- * Utilidades de seguridad para acceder al usuario autenticado.
+ * Utilidades para obtener el usuario que hizo la petición.
+ *
+ * Firebase usa un UID como principal, mientras que NexaBank
+ * tiene sus propios IDs (por ejemplo USR-000001).
+ *
+ * Para trabajar con los datos del seed buscamos primero por UID
+ * y, si no existe, por correo electrónico.
  */
 @Component
 public class SecurityUtils {
 
-    /**
-     * Obtiene el UID de Firebase del usuario autenticado.
-     *
-     * @return el UID del usuario
-     * @throws IllegalStateException si no hay usuario autenticado
-     */
-    public String getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            return "USR-000001";
-        }
-        return authentication.getPrincipal().toString();
+    private final UserRepository userRepository;
+
+    public SecurityUtils(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
-    /**
-     * Obtiene el email del usuario autenticado.
-     *
-     * @return el email del usuario, o null si no está disponible
-     */
+    public String getCurrentUserId() {
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        if (authentication == null ||
+                !authentication.isAuthenticated()) {
+            throw new IllegalStateException(
+                    "No authenticated user"
+            );
+        }
+
+        String firebaseUid =
+                authentication.getPrincipal().toString();
+
+        // Si en el futuro guardamos el UID de Firebase
+        // como ID de usuario, esto permite encontrarlo.
+        if (userRepository.findById(firebaseUid).isPresent()) {
+            return firebaseUid;
+        }
+
+        String email = getCurrentUserEmail();
+
+        if (email != null) {
+            User user =
+                    userRepository
+                            .findByEmail(email)
+                            .orElse(null);
+
+            if (user != null) {
+                return user.getId();
+            }
+        }
+
+        // Usuario autenticado pero todavía no creado
+        // en la colección users.
+        return firebaseUid;
+    }
+
     public String getCurrentUserEmail() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || authentication.getCredentials() == null) {
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        if (authentication == null) {
             return null;
         }
-        return authentication.getCredentials().toString();
+
+        Object credentials =
+                authentication.getCredentials();
+
+        return credentials != null
+                ? credentials.toString()
+                : null;
     }
 }

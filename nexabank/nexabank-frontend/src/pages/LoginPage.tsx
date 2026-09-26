@@ -34,16 +34,8 @@ function LoginPage() {
 
       navigate("/dashboard");
     } catch (error) {
-      // Por ahora usamos un token de prueba si el backend
-      // todavía no está conectado.
-      console.log("Backend no disponible:", error);
-
-      localStorage.setItem(
-        "nexabank_token",
-        "demo-token"
-      );
-
-      navigate("/dashboard");
+      console.error("No se pudo iniciar sesión:", error);
+      alert("Correo o contraseña incorrectos, o Firebase no está configurado.");
     }
 
     setLoading(false);
@@ -182,7 +174,7 @@ function LoginPage() {
             </form>
 
             <p className="mt-6 rounded-xl bg-slate-50 p-3 text-center text-xs text-slate-500">
-              Demo: admin@nexabank.co / 123456
+              Usa una cuenta creada en Firebase Authentication.
             </p>
           </div>
         </div>

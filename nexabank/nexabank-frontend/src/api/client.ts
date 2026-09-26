@@ -1,13 +1,9 @@
 import axios from "axios";
 
-// Dirección donde normalmente estará funcionando
-// nuestro backend de Spring Boot.
 export const API_URL =
   import.meta.env.VITE_API_URL ||
-  "http://localhost:8080/api";
+  "http://localhost:8080/api/v1";
 
-// Creamos una instancia de Axios para no repetir
-// la dirección del backend en cada archivo.
 export const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -15,10 +11,8 @@ export const api = axios.create({
   }
 });
 
-// Antes de cada petición revisamos si tenemos
-// un token guardado en el navegador.
+// Enviamos el ID token de Firebase en cada petición privada.
 api.interceptors.request.use((config) => {
-
   const token =
     localStorage.getItem("nexabank_token");
 
@@ -29,3 +23,14 @@ api.interceptors.request.use((config) => {
 
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("nexabank_token");
+    }
+
+    return Promise.reject(error);
+  }
+);

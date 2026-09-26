@@ -1,47 +1,34 @@
-export type TransactionType = "DEPOSIT" | "WITHDRAWAL" | "TRANSFER";
+export type TransactionType =
+  | "INCOME"
+  | "EXPENSE"
+  | "TRANSFER";
 
 export interface Transaction {
   id: string;
-  date: string;
+  accountId: string;
   type: TransactionType;
-  description: string;
+  category: string;
   amount: number;
-  status: "COMPLETED" | "PENDING" | "FAILED";
-  account?: string;
+  currency: string;
+  description: string;
+  status:
+    | "COMPLETED"
+    | "PENDING"
+    | "FAILED"
+    | "CANCELLED";
+  timestamp: string;
+  createdAt: string;
 }
 
 export interface Account {
   id: string;
   name: string;
-  number: string;
+  currency: string;
   balance: number;
   type: string;
+  status: string;
 }
 
-export interface DashboardData {
-  totalAccounts: number;
-  totalTransactions: number;
-  aggregateBalance: number;
-  monthlyVolume: number;
-}
-
-export type AlgorithmName = "MERGE_SORT" | "QUICK_SORT";
-
-export interface SortRequest {
-  algorithm: AlgorithmName;
-  field: "amount" | "date";
-}
-
-export interface SortResult {
-  algorithm: AlgorithmName;
-  inputSize: number;
-  executionTimeNanos: number;
-  sortedData: Transaction[];
-}
-
-export interface BenchmarkPoint {
-  inputSize: number;
-  mergeSortNanos: number;
-  quickSortNanos: number;
-  binarySearchNanos: number;
-}
+export type AlgorithmName =
+  | "MERGE_SORT"
+  | "QUICK_SORT";

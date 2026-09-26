@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   LineChart,
   Line,
@@ -14,49 +15,116 @@ import {
   Gauge
 } from "lucide-react";
 
-import { mockBenchmarks } from "../api/mock";
+import {
+  executeBenchmark,
+  getBenchmarkResults,
+  getBenchmarkRuns,
+  type BenchmarkResult,
+  type BenchmarkRun
+} from "../api/benchmarks.api";
 
 import {
+  Button,
   Card,
   PageTitle
 } from "../components/ui";
 
 function BenchmarksPage() {
+  const [runs, setRuns] =
+    useState<BenchmarkRun[]>([]);
 
-  // Convertimos nanosegundos a milisegundos
-  // para que sea más fácil leer el gráfico.
-  const chartData = mockBenchmarks.map((item) => {
-    return {
-      inputSize: item.inputSize,
+  const [results, setResults] =
+    useState<BenchmarkResult[]>([]);
 
-      mergeMs: Number(
-        (item.mergeSortNanos / 1000000).toFixed(3)
-      ),
+  const [loading, setLoading] =
+    useState(true);
 
-      quickMs: Number(
-        (item.quickSortNanos / 1000000).toFixed(3)
-      ),
+  const [executing, setExecuting] =
+    useState(false);
 
-      binaryMs: Number(
-        (item.binarySearchNanos / 1000000).toFixed(3)
+  async function loadBenchmarks() {
+    try {
+      const runsData =
+        await getBenchmarkRuns();
+
+      setRuns(runsData);
+
+      if (runsData.length > 0) {
+        const latestRun = runsData[0];
+
+        const resultsData =
+          await getBenchmarkResults(
+            latestRun.id
+          );
+
+        setResults(resultsData);
+      }
+    } catch (error) {
+      console.error(
+        "No se pudieron cargar los benchmarks:",
+        error
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadBenchmarks();
+  }, []);
+
+  async function runBenchmark() {
+    setExecuting(true);
+
+    try {
+      await executeBenchmark(1000);
+      await loadBenchmarks();
+    } catch (error) {
+      console.error(
+        "No se pudo ejecutar el benchmark:",
+        error
+      );
+
+      alert(
+        "No se pudo ejecutar el benchmark."
+      );
+    } finally {
+      setExecuting(false);
+    }
+  }
+
+  const chartData = results.map(
+    (result) => ({
+      inputSize: result.inputSize,
+      algorithm: result.algorithm,
+      score: Number(
+        (result.score / 1000000).toFixed(3)
       )
-    };
-  });
+    })
+  );
 
   return (
     <>
       <PageTitle
         title="Benchmarks"
-        description="Comparación empírica de los algoritmos medidos con JMH."
+        description="Resultados reales entregados por el backend."
+        action={
+          <Button
+            onClick={runBenchmark}
+            disabled={executing}
+          >
+            {executing
+              ? "Ejecutando..."
+              : "Ejecutar benchmark"}
+          </Button>
+        }
       />
 
       <div className="grid gap-4 md:grid-cols-3">
 
         <Card className="p-5">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-indigo-50 p-3 text-indigo-600">
-              <Gauge size={19} />
-            </div>
+            <Gauge className="text-indigo-600" />
 
             <div>
               <p className="font-bold">
@@ -72,9 +140,7 @@ function BenchmarksPage() {
 
         <Card className="p-5">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-indigo-50 p-3 text-indigo-600">
-              <Gauge size={19} />
-            </div>
+            <Gauge className="text-indigo-600" />
 
             <div>
               <p className="font-bold">
@@ -90,9 +156,7 @@ function BenchmarksPage() {
 
         <Card className="p-5">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-indigo-50 p-3 text-indigo-600">
-              <Gauge size={19} />
-            </div>
+            <Gauge className="text-indigo-600" />
 
             <div>
               <p className="font-bold">
@@ -107,120 +171,126 @@ function BenchmarksPage() {
         </Card>
       </div>
 
-      <Card className="mt-6 p-5 sm:p-7">
+      {loading ? (
+        <Card className="mt-6 p-8 text-center text-slate-500">
+          Cargando benchmarks...
+        </Card>
+      ) : (
+        <>
+          <Card className="mt-6 p-5 sm:p-7">
+            <div className="mb-5 flex items-center gap-3">
+              <BarChart3 className="text-indigo-600" />
 
-        <div className="mb-5 flex items-center gap-3">
-          <BarChart3 className="text-indigo-600" />
+              <div>
+                <h2 className="font-bold">
+                  Resultados del backend
+                </h2>
 
-          <div>
-            <h2 className="font-bold">
-              Tiempo vs tamaño de entrada
-            </h2>
+                <p className="text-xs text-slate-400">
+                  Tiempo expresado en milisegundos.
+                </p>
+              </div>
+            </div>
 
-            <p className="text-xs text-slate-400">
-              Datos de ejemplo; después serán reemplazados
-              por /api/benchmarks/results.
-            </p>
-          </div>
-        </div>
+            <div className="h-[380px] w-full">
+              <ResponsiveContainer>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
 
-        <div className="h-[380px] w-full">
-          <ResponsiveContainer>
-            <LineChart data={chartData}>
+                  <XAxis dataKey="inputSize" />
 
-              <CartesianGrid strokeDasharray="3 3" />
+                  <YAxis />
 
-              <XAxis dataKey="inputSize" />
+                  <Tooltip />
 
-              <YAxis />
+                  <Legend />
 
-              <Tooltip />
+                  <Line
+                    type="monotone"
+                    dataKey="score"
+                    name="Tiempo (ms)"
+                    strokeWidth={3}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
 
-              <Legend />
+          <Card className="mt-6 overflow-hidden">
+            <div className="border-b p-5">
+              <h2 className="font-bold">
+                Última ejecución
+              </h2>
 
-              <Line
-                type="monotone"
-                dataKey="mergeMs"
-                name="MergeSort (ms)"
-                strokeWidth={3}
-              />
+              {runs[0] && (
+                <p className="mt-1 text-xs text-slate-400">
+                  {runs[0].id} ·{" "}
+                  {runs[0].framework} ·{" "}
+                  {runs[0].datasetSize} elementos
+                </p>
+              )}
+            </div>
 
-              <Line
-                type="monotone"
-                dataKey="quickMs"
-                name="QuickSort (ms)"
-                strokeWidth={3}
-              />
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px] text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="p-4 text-left">
+                      Algoritmo
+                    </th>
 
-              <Line
-                type="monotone"
-                dataKey="binaryMs"
-                name="BinarySearch (ms)"
-                strokeWidth={3}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
+                    <th className="p-4 text-left">
+                      Operación
+                    </th>
 
-      <Card className="mt-6 overflow-hidden">
+                    <th className="p-4 text-right">
+                      Entrada
+                    </th>
 
-        <div className="border-b p-5">
-          <h2 className="font-bold">
-            Resultados JMH
-          </h2>
-        </div>
+                    <th className="p-4 text-right">
+                      Resultado
+                    </th>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[600px] text-sm">
+                    <th className="p-4 text-right">
+                      Error
+                    </th>
+                  </tr>
+                </thead>
 
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="p-4 text-left">
-                  Entrada
-                </th>
+                <tbody>
+                  {results.map((result) => (
+                    <tr
+                      key={result.id}
+                      className="border-t"
+                    >
+                      <td className="p-4 font-semibold">
+                        {result.algorithm}
+                      </td>
 
-                <th className="p-4 text-right">
-                  MergeSort
-                </th>
+                      <td className="p-4">
+                        {result.operation}
+                      </td>
 
-                <th className="p-4 text-right">
-                  QuickSort
-                </th>
+                      <td className="p-4 text-right">
+                        {result.inputSize.toLocaleString()}
+                      </td>
 
-                <th className="p-4 text-right">
-                  BinarySearch
-                </th>
-              </tr>
-            </thead>
+                      <td className="p-4 text-right">
+                        {result.score.toFixed(2)}{" "}
+                        {result.unit}
+                      </td>
 
-            <tbody>
-              {chartData.map((item) => (
-                <tr
-                  key={item.inputSize}
-                  className="border-t"
-                >
-                  <td className="p-4 font-semibold">
-                    {item.inputSize.toLocaleString()}
-                  </td>
-
-                  <td className="p-4 text-right">
-                    {item.mergeMs} ms
-                  </td>
-
-                  <td className="p-4 text-right">
-                    {item.quickMs} ms
-                  </td>
-
-                  <td className="p-4 text-right">
-                    {item.binaryMs} ms
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+                      <td className="p-4 text-right">
+                        {result.scoreError.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
     </>
   );
 }

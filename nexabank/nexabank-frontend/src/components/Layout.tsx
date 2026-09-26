@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { logoutFromFirebase } from "../firebase";
 import {
   BarChart3,
   CreditCard,
@@ -23,8 +24,8 @@ export function Layout() {
 
   const navigate = useNavigate();
 
-  function logout() {
-    localStorage.removeItem("nexabank_token");
+  async function logout() {
+    await logoutFromFirebase();
     navigate("/login");
   }
 

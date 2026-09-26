@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Binary,
   Clock3,
@@ -7,7 +7,12 @@ import {
   Zap
 } from "lucide-react";
 
-import { mockTransactions } from "../api/mock";
+import {
+  binarySearch,
+  runSort,
+  type SortResult
+} from "../api/algorithms.api";
+
 import {
   Badge,
   Button,
@@ -15,101 +20,82 @@ import {
   PageTitle
 } from "../components/ui";
 
-import type { AlgorithmName } from "../types";
-
 function AlgorithmsPage() {
   const [algorithm, setAlgorithm] =
-    useState<AlgorithmName>("MERGE_SORT");
+    useState<"MERGE_SORT" | "QUICK_SORT">(
+      "MERGE_SORT"
+    );
 
   const [field, setField] =
-    useState<"amount" | "date">("amount");
-
-  const [target, setTarget] =
-    useState("TX-1008");
+    useState<"amount" | "createdAt">(
+      "amount"
+    );
 
   const [result, setResult] =
-    useState("");
+    useState<SortResult | null>(null);
+
+  const [target, setTarget] =
+    useState("TX-000001");
+
+  const [searchField, setSearchField] =
+    useState<"id" | "amount">("id");
 
   const [searchResult, setSearchResult] =
-    useState("");
+    useState<{
+      found: boolean;
+      position: number;
+      executionTimeNanos: number;
+    } | null>(null);
 
-  const [running, setRunning] =
+  const [loading, setLoading] =
     useState(false);
 
-  // Creamos una copia de las transacciones y
-  // las ordenamos para mostrar el resultado.
-  const preview = useMemo(() => {
-    const data = [...mockTransactions];
+  async function executeSort() {
+    setLoading(true);
 
-    data.sort((a, b) => {
-      if (field === "amount") {
-        return a.amount - b.amount;
-      }
+    try {
+      const data = await runSort({
+        algorithm,
+        field,
+        order: "ASC"
+      });
 
-      return (
-        new Date(a.date).getTime() -
-        new Date(b.date).getTime()
+      setResult(data);
+    } catch (error) {
+      console.error(
+        "No se pudo ejecutar el algoritmo:",
+        error
       );
-    });
 
-    return data;
-  }, [field]);
-
-  async function runAlgorithm() {
-    setRunning(true);
-
-    const start = performance.now();
-
-    // Esto solamente simula el tiempo del backend.
-    // Después se reemplazará por la petición real.
-    await new Promise((resolve) =>
-      setTimeout(resolve, 450)
-    );
-
-    const end = performance.now();
-    const time = (end - start).toFixed(2);
-
-    let algorithmName = "MergeSort";
-
-    if (algorithm === "QUICK_SORT") {
-      algorithmName = "QuickSort";
+      alert(
+        "No se pudo ejecutar el algoritmo. Revisa el backend."
+      );
+    } finally {
+      setLoading(false);
     }
-
-    setResult(
-      algorithmName +
-      " ordenó " +
-      preview.length +
-      " registros por " +
-      field +
-      " en " +
-      time +
-      " ms (demo local)."
-    );
-
-    setRunning(false);
   }
 
-  function searchTransaction() {
-    const text = target.toLowerCase();
+  async function executeSearch() {
+    setLoading(true);
 
-    const transaction = mockTransactions.find((item) => {
-      return (
-        item.id.toLowerCase() === text ||
-        item.description.toLowerCase().includes(text)
+    try {
+      const data = await binarySearch(
+        target,
+        searchField
       );
-    });
 
-    if (transaction) {
-      setSearchResult(
-        "Encontrado: " +
-        transaction.id +
-        " — " +
-        transaction.description
+      setSearchResult(data);
+    } catch (error) {
+      console.error(
+        "No se pudo ejecutar BinarySearch:",
+        error
       );
-    } else {
-      setSearchResult(
-        "No se encontró ningún registro."
+
+      alert(
+        "No se pudo ejecutar la búsqueda."
       );
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -117,14 +103,12 @@ function AlgorithmsPage() {
     <>
       <PageTitle
         title="Algoritmos"
-        description="Playground para ejecutar los algoritmos de NexaBank sobre transacciones."
+        description="Los algoritmos se ejecutan en nexabank-core a través del backend."
       />
 
       <div className="grid gap-6 xl:grid-cols-2">
 
-        {/* SORT */}
         <Card className="p-6">
-
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-indigo-50 p-3 text-indigo-600">
               <Zap />
@@ -136,13 +120,12 @@ function AlgorithmsPage() {
               </h2>
 
               <p className="text-xs text-slate-400">
-                /api/algorithms/sort
+                POST /api/v1/algorithms/sort
               </p>
             </div>
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
-
             <label className="text-sm font-semibold">
               Algoritmo
 
@@ -150,7 +133,9 @@ function AlgorithmsPage() {
                 value={algorithm}
                 onChange={(event) =>
                   setAlgorithm(
-                    event.target.value as AlgorithmName
+                    event.target.value as
+                    | "MERGE_SORT"
+                    | "QUICK_SORT"
                   )
                 }
                 className="mt-2 w-full rounded-xl border border-slate-200 p-3 font-normal"
@@ -174,7 +159,7 @@ function AlgorithmsPage() {
                   setField(
                     event.target.value as
                     | "amount"
-                    | "date"
+                    | "createdAt"
                   )
                 }
                 className="mt-2 w-full rounded-xl border border-slate-200 p-3 font-normal"
@@ -183,7 +168,7 @@ function AlgorithmsPage() {
                   Monto
                 </option>
 
-                <option value="date">
+                <option value="createdAt">
                   Fecha
                 </option>
               </select>
@@ -191,13 +176,13 @@ function AlgorithmsPage() {
           </div>
 
           <Button
-            onClick={runAlgorithm}
-            disabled={running}
+            onClick={executeSort}
+            disabled={loading}
             className="mt-5 flex items-center gap-2"
           >
             <Play size={16} />
 
-            {running
+            {loading
               ? "Ejecutando..."
               : "Ejecutar algoritmo"}
           </Button>
@@ -208,55 +193,64 @@ function AlgorithmsPage() {
                 className="mb-2"
                 size={18}
               />
-              {result}
+
+              {result.algorithm} procesó{" "}
+              {result.inputSize} registros en{" "}
+              {result.executionTimeNanos} ns.
             </div>
           )}
 
-          <div className="mt-6 overflow-hidden rounded-xl border border-slate-200">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="p-3 text-left">
-                    ID
-                  </th>
+          {result && (
+            <div className="mt-5 overflow-hidden rounded-xl border">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="p-3 text-left">
+                      ID
+                    </th>
 
-                  <th className="p-3 text-left">
-                    Descripción
-                  </th>
+                    <th className="p-3 text-left">
+                      Descripción
+                    </th>
 
-                  <th className="p-3 text-right">
-                    Monto
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {preview.slice(0, 6).map((item) => (
-                  <tr
-                    key={item.id}
-                    className="border-t"
-                  >
-                    <td className="p-3 font-medium">
-                      {item.id}
-                    </td>
-
-                    <td className="p-3">
-                      {item.description}
-                    </td>
-
-                    <td className="p-3 text-right">
-                      {item.amount.toLocaleString("es-CO")}
-                    </td>
+                    <th className="p-3 text-right">
+                      Monto
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+
+                <tbody>
+                  {result.data
+                    .slice(0, 6)
+                    .map((item) => (
+                      <tr
+                        key={item.id}
+                        className="border-t"
+                      >
+                        <td className="p-3">
+                          {item.id}
+                        </td>
+
+                        <td className="p-3">
+                          {item.description}
+                        </td>
+
+                        <td className="p-3 text-right">
+                          {Number(
+                            item.amount
+                          ).toLocaleString(
+                            "es-CO"
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
 
-        {/* BINARY SEARCH */}
         <Card className="p-6">
-
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-amber-50 p-3 text-amber-600">
               <Binary />
@@ -268,28 +262,50 @@ function AlgorithmsPage() {
               </h2>
 
               <p className="text-xs text-slate-400">
-                /api/algorithms/search
+                POST /api/v1/algorithms/search
               </p>
             </div>
           </div>
 
           <p className="mt-4 text-sm text-slate-500">
-            Busca sobre datos ordenados. En producción,
-            el backend ejecutará BinarySearch del módulo
-            nexabank-core.
+            La búsqueda se ejecuta sobre las
+            transacciones ordenadas por el backend.
           </p>
 
-          <div className="mt-6 flex gap-2">
+          <div className="mt-6 grid gap-3 sm:grid-cols-[150px_1fr_auto]">
+            <select
+              value={searchField}
+              onChange={(event) =>
+                setSearchField(
+                  event.target.value as
+                  | "id"
+                  | "amount"
+                )
+              }
+              className="rounded-xl border border-slate-200 px-3 py-3"
+            >
+              <option value="id">
+                ID
+              </option>
+
+              <option value="amount">
+                Monto
+              </option>
+            </select>
+
             <input
               value={target}
               onChange={(event) =>
                 setTarget(event.target.value)
               }
-              placeholder="TX-1008 o descripción"
-              className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-3 outline-none focus:border-indigo-500"
+              placeholder="TX-000001"
+              className="rounded-xl border border-slate-200 px-3 py-3 outline-none focus:border-indigo-500"
             />
 
-            <Button onClick={searchTransaction}>
+            <Button
+              onClick={executeSearch}
+              disabled={loading}
+            >
               <Search size={17} />
             </Button>
           </div>
@@ -298,28 +314,38 @@ function AlgorithmsPage() {
             <div className="mt-5">
               <Badge
                 tone={
-                  searchResult.startsWith("Encontrado")
+                  searchResult.found
                     ? "green"
                     : "red"
                 }
               >
-                {searchResult}
+                {searchResult.found
+                  ? `Encontrado en posición ${searchResult.position}`
+                  : "No encontrado"}
               </Badge>
+
+              <p className="mt-2 text-sm text-slate-500">
+                Tiempo:{" "}
+                {searchResult.executionTimeNanos} ns
+              </p>
             </div>
           )}
 
           <div className="mt-8 rounded-2xl bg-slate-950 p-5 text-white">
             <p className="text-xs uppercase tracking-widest text-slate-500">
-              Contrato
+              Flujo
             </p>
 
-            <pre className="mt-3 overflow-auto text-xs leading-6 text-slate-300">
-{`POST /api/algorithms/search
-
-{
-  "target": "${target}",
-  "field": "id"
-}`}
+            <pre className="mt-3 text-xs leading-6 text-slate-300">
+{`React
+  ↓
+Spring Boot
+  ↓
+AlgorithmService
+  ↓
+nexabank-core
+  ↓
+BinarySearch`}
             </pre>
           </div>
         </Card>
